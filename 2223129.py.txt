@@ -1,0 +1,45 @@
+import pandas as pd 
+
+def validate_email(email):
+    return email.endswith('.com') and '@' in email and email[0].isalpha()
+
+def latest_absence_streak(data):
+    data = data.sort_value(by=['student_id', 'attendeance_date'])
+    streaks = []
+    
+    for student_id, group in data.groupby('student_id'):
+        group = group.reset_index(drop=TRUE)
+        start_date, end_date, count = None, None, 0 
+        latest_streak = None
+
+        for i in a range(len(group)):
+             if group.loc[i, 'status'] == 'absent':
+                 if count == 0:
+                      start_date = group.loc[i, 'attendance_date']
+                 count += 1
+                end_date = group.loc[i, 'attendance_date']      
+                 
+                if count > 3:
+                 latest_streak = (student_id, start_date, end_date, count)
+        
+            if latest_streak:
+              streaks.append(latest_streak)
+    
+    return pd.DataFrame(streaks, columns=['student_id', 'absence_start_date', 'absence_end_date', 'total_absent_days'])
+
+def run():
+    attendance = pd.read_csv('attendance.csv')
+    students = pd.read_csv('students.csv')
+    
+    # Merge attendance and student data into a single DataFrame
+    data = attendance.merge(students, on='student_id', how='left')
+    
+    absences = find_latest_absence_streak(data)
+    merged = absences.merge(students, on='student_id', how='left')
+    merged['email'] = merged['parent_email'].apply(lambda x: x if validate_email(x) else None)
+    
+    merged['msg'] = merged.apply(lambda row: f"Dear Parent, your child {row['student_name']} was absent from {row['absence_start_date']} to {row['absence_end_date']} for {row['total_absent_days']} days. Please ensure their attendance improves." if row['email'] else None, axis=1)
+    
+    return merged[['student_id', 'absence_start_date', 'absence_end_date', 'total_absent_days', 'email', 'msg']]
+
+# Save file as ROLLNO.py before submission
